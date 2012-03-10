@@ -1,0 +1,12 @@
+
+AM_INC=<OPENAM_DIR>/products/webagents/built/include/
+AM_LIB=<OPENAM_DIR>/products/webagents/built/Linux/lib/
+#AM_INC=/opt/osstech/include/openam-agent/
+#AM_LIB=/opt/osstech/lib64/openam-agent/
+
+CFLAGS="$CFLAGS -I${AM_INC} -DLINUX"
+CORE_LIBS="$CORE_LIBS -L${AM_LIB} -Wl,-Bstatic -lamsdk -Wl,-Bdynamic -lstdc++ -lxml2 -lplc4 -lplds4 -lnspr4 -lssl3 -lnss3 -lnssutil3"
+
+ngx_addon_name=ngx_http_am_module
+HTTP_MODULES="$HTTP_MODULES ngx_http_am_module"
+NGX_ADDON_SRCS="$NGX_ADDON_SRCS $ngx_addon_dir/ngx_http_am_module.c"
