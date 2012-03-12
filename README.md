@@ -76,5 +76,6 @@ If you found some problem, then please send me the debug logfile.
     error_log  logs/error.log debug_http;
 
 # TODO
+ * logout notification handling
  * POST data handling
  * write more ducument
