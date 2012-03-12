@@ -21,8 +21,53 @@ static ngx_int_t ngx_http_am_init_process(ngx_cycle_t *cycle);
 static void ngx_http_am_exit_process(ngx_cycle_t *cycle);
 static ngx_int_t ngx_http_am_handler(ngx_http_request_t *r);
 
+static ngx_command_t ngx_http_am_commands[] = {
+    { ngx_string("am_boot_file"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_am_main_conf_t, boot_file),
+      NULL },
+    { ngx_string("am_conf_file"),
+      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_str_slot,
+      NGX_HTTP_MAIN_CONF_OFFSET,
+      offsetof(ngx_http_am_main_conf_t, conf_file),
+      NULL },
+    ngx_null_command
+};
+
+static ngx_http_module_t ngx_http_am_module_ctx = {
+    NULL,                          /* preconfiguration */
+    ngx_http_am_init,              /* postconfiguration */
+
+    ngx_http_am_create_main_conf,  /* create main configuration */
+    ngx_http_am_init_main_conf,    /* init main configuration */
+
+    NULL,                          /* create server configuration */
+    NULL,                          /* merge server configuration */
+
+    NULL,                          /* create location configuration */
+    NULL,                          /* merge location configuration */
+};
+
+ngx_module_t ngx_http_am_module = {
+    NGX_MODULE_V1,
+    &ngx_http_am_module_ctx,       /* module context */
+    ngx_http_am_commands,          /* module directives */
+    NGX_HTTP_MODULE,               /* module type */
+    NULL,                          /* init master */
+    NULL,                          /* init module */
+    ngx_http_am_init_process,      /* init process */
+    NULL,                          /* init thread */
+    NULL,                          /* exit thread */
+    ngx_http_am_exit_process,      /* exit process */
+    NULL,                          /* exit master */
+    NGX_MODULE_V1_PADDING
+};
+
 static am_status_t
-ngx_http_am_func_set_user(void **args, const char *user)
+ngx_http_am_set_user(void **args, const char *user)
 {
     am_status_t st = AM_SUCCESS;
     ngx_http_request_t *r = args[0];
@@ -32,7 +77,7 @@ ngx_http_am_func_set_user(void **args, const char *user)
 }
 
 static am_status_t
-ngx_http_am_func_render_result(void **args, am_web_result_t result, char *data)
+ngx_http_am_render_result(void **args, am_web_result_t result, char *data)
 {
     am_status_t st = AM_SUCCESS;
     ngx_http_request_t *r = args[0];
@@ -55,15 +100,15 @@ ngx_http_am_func_render_result(void **args, am_web_result_t result, char *data)
         *ret = NGX_DECLINED;
         break;
     case AM_WEB_RESULT_REDIRECT:
+        if(!data){
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "redirect data is null.");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
         header = ngx_list_push(&r->headers_out.headers);
         if(!header){
             ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                           "insufficient memory");
-            return NGX_HTTP_INTERNAL_SERVER_ERROR;
-        }
-        if(!data){
-            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                          "redirect data is null.");
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
         header->hash = 1;
@@ -89,6 +134,52 @@ ngx_http_am_func_render_result(void **args, am_web_result_t result, char *data)
         break;
     }
     return st;
+}
+
+am_status_t
+ngx_http_am_set_header_in_request(void **args,
+                                  const char *key,
+                                  const char *val)
+{
+    ngx_http_request_t *r = args[0];
+    am_status_t sts = AM_SUCCESS;
+    ngx_table_elt_t *header;
+    //size_t i;
+
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "ngx_http_am_set_header_in_request() "
+                  "key=%s, val=%s", key, val);
+
+
+
+    header = ngx_list_push(&r->headers_in.headers);
+    if(!header){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return AM_FAILURE;
+    }
+
+    header->key.len = strlen(key);
+    header->key.data = ngx_palloc(r->pool, header->key.len);
+    ngx_memcpy(header->key.data, key, header->key.len);
+
+    header->value.len = strlen(val);
+    header->value.data = ngx_palloc(r->pool, header->value.len);
+    ngx_memcpy(header->value.data, val, header->value.len);
+    return sts;
+}
+
+am_status_t
+ngx_http_am_add_header_in_response(void **args,
+                                   const char *key,
+                                   const char *val)
+{
+    ngx_http_request_t *r = args[0];
+    am_status_t sts = AM_SUCCESS;
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "ngx_http_am_add_header_in_response() "
+                  "key=%s, val=%s", key, val);
+    return sts;
 }
 
 /*
@@ -237,57 +328,16 @@ ngx_http_am_setup_request_func(ngx_http_request_t *r,
                                void **args
     ){
     memset((void *)func, 0, sizeof(am_web_request_func_t));
-    func->set_user.func = ngx_http_am_func_set_user;
+    func->set_user.func = ngx_http_am_set_user;
     func->set_user.args = args;
-    func->render_result.func = ngx_http_am_func_render_result;
+    func->render_result.func = ngx_http_am_render_result;
     func->render_result.args = args;
+    func->set_header_in_request.func = ngx_http_am_set_header_in_request;
+    func->set_header_in_request.args = args;
+    func->add_header_in_response.func = ngx_http_am_add_header_in_response;
+    func->add_header_in_response.args = args;
     return NGX_OK;
 }
-
-static ngx_command_t ngx_http_am_commands[] = {
-    { ngx_string("am_boot_file"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_am_main_conf_t, boot_file),
-      NULL },
-    { ngx_string("am_conf_file"),
-      NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_HTTP_MAIN_CONF_OFFSET,
-      offsetof(ngx_http_am_main_conf_t, conf_file),
-      NULL },
-    ngx_null_command
-};
-
-static ngx_http_module_t ngx_http_am_module_ctx = {
-    NULL,                          /* preconfiguration */
-    ngx_http_am_init,              /* postconfiguration */
-
-    ngx_http_am_create_main_conf,  /* create main configuration */
-    ngx_http_am_init_main_conf,    /* init main configuration */
-
-    NULL,                          /* create server configuration */
-    NULL,                          /* merge server configuration */
-
-    NULL,                          /* create location configuration */
-    NULL,                          /* merge location configuration */
-};
-
-ngx_module_t ngx_http_am_module = {
-    NGX_MODULE_V1,
-    &ngx_http_am_module_ctx,       /* module context */
-    ngx_http_am_commands,          /* module directives */
-    NGX_HTTP_MODULE,               /* module type */
-    NULL,                          /* init master */
-    NULL,                          /* init module */
-    ngx_http_am_init_process,      /* init process */
-    NULL,                          /* init thread */
-    NULL,                          /* exit thread */
-    ngx_http_am_exit_process,      /* exit process */
-    NULL,                          /* exit master */
-    NGX_MODULE_V1_PADDING
-};
 
 static ngx_int_t
 ngx_http_am_init(ngx_conf_t *cf)

@@ -29,7 +29,7 @@ Linux 6 and Debian Wheezy.
 
     This is temporary repository:
 
-    $ git clone https://bitbucket.org/hamano/nginx-mod-am.git
+        $ git clone https://bitbucket.org/hamano/nginx-mod-am.git
 
  3. Edit nginx-mod-am/config file
 
