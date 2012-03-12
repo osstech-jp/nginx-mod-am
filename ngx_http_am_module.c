@@ -431,17 +431,36 @@ ngx_http_am_exit_process(ngx_cycle_t *cycle)
     am_cleanup();
 }
 
-static ngx_int_t
-ngx_http_am_notification_handler(ngx_http_request_t *r)
+void
+ngx_http_am_read_body(ngx_http_request_t *r)
 {
+}
+
+static ngx_int_t
+ngx_http_am_notification_handler(ngx_http_request_t *r, void *agent_config)
+{
+    ngx_int_t ret;
     static ngx_str_t type = ngx_string("text/plain");
     static ngx_str_t value = ngx_string("OK\n");
     ngx_http_complex_value_t cv;
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "notification request.");
+
+    ret = ngx_http_read_client_request_body(r, ngx_http_am_read_body);
+    if(!r->request_body || !r->request_body->buf){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "no request body.");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    size_t size = ngx_buf_size(r->request_body->buf);
+    am_web_handle_notification((char *)r->request_body->buf->pos,
+                               size,
+                               agent_config);
+
     ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));
     cv.value = value;
-    return ngx_http_send_response(r, NGX_HTTP_OK, &type, &cv);
+    ngx_http_send_response(r, NGX_HTTP_OK, &type, &cv);
+    return NGX_HTTP_OK;
 }
 
 static ngx_int_t
@@ -478,9 +497,9 @@ ngx_http_am_handler(ngx_http_request_t *r)
 
     if(am_web_is_notification(req_params.url, agent_config) == B_TRUE){
         // Hmmm, How I notify to all process when working multiprocess mode.
-        ngx_http_am_notification_handler(r);
+        ret = ngx_http_am_notification_handler(r, agent_config);
         am_web_delete_agent_configuration(agent_config);
-        return NGX_HTTP_OK;
+        return ret;
     }
 
     if(ngx_http_am_setup_request_func(r, &req_func, args) != NGX_OK){

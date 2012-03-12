@@ -76,7 +76,5 @@ If you found some problem, then please send me the debug logfile.
     error_log  logs/error.log debug_http;
 
 # TODO
- * notification handling
  * POST data handling
- * header injection
  * write more ducument
