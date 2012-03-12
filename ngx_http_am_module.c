@@ -142,15 +142,18 @@ ngx_http_am_set_header_in_request(void **args,
                                   const char *val)
 {
     ngx_http_request_t *r = args[0];
-    am_status_t sts = AM_SUCCESS;
     ngx_table_elt_t *header;
-    //size_t i;
-
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_set_header_in_request() "
-                  "key=%s, val=%s", key, val);
+                  "key=%s, val=%s", key, val?val:"(null)");
+    if(!val){
+        return AM_SUCCESS;
+    }
 
-
+    if(!strcasecmp(key, "cookie")){
+        // ignore cookie header
+        return AM_SUCCESS;
+    }
 
     header = ngx_list_push(&r->headers_in.headers);
     if(!header){
@@ -166,7 +169,7 @@ ngx_http_am_set_header_in_request(void **args,
     header->value.len = strlen(val);
     header->value.data = ngx_palloc(r->pool, header->value.len);
     ngx_memcpy(header->value.data, val, header->value.len);
-    return sts;
+    return AM_SUCCESS;
 }
 
 am_status_t
