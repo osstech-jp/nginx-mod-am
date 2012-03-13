@@ -431,7 +431,34 @@ ngx_http_am_exit_process(ngx_cycle_t *cycle)
     am_cleanup();
 }
 
-void
+static size_t ngx_chain_size(ngx_chain_t *chain){
+    size_t size = 0;
+    while(chain && chain->buf){
+        size += ngx_buf_size(chain->buf);
+        chain = chain->next;
+    }
+    return size;
+}
+
+static char *ngx_chain_cat(ngx_http_request_t *r, ngx_chain_t *chain){
+    size_t size = ngx_chain_size(chain);
+    char *buf = ngx_palloc(r->pool, size + 1);
+    if(!buf){
+        return NULL;
+    }
+    char *p = buf;
+    while(chain && chain->buf){
+        ngx_memcpy(p,
+                   chain->buf->pos,
+                   ngx_buf_size(chain->buf));
+        p = p + ngx_buf_size(chain->buf);
+        chain = chain->next;
+    }
+    buf[size] = '\0';
+    return buf;
+}
+
+static void
 ngx_http_am_read_body(ngx_http_request_t *r)
 {
 }
@@ -447,16 +474,20 @@ ngx_http_am_notification_handler(ngx_http_request_t *r, void *agent_config)
                   "notification request.");
 
     ret = ngx_http_read_client_request_body(r, ngx_http_am_read_body);
-    if(!r->request_body || !r->request_body->buf){
+    if(!r->request_body || !r->request_body->bufs){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "no request body.");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
-    size_t size = ngx_buf_size(r->request_body->buf);
-    am_web_handle_notification((char *)r->request_body->buf->pos,
-                               size,
+    char *body = ngx_chain_cat(r, r->request_body->bufs);
+    if(!body){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+    am_web_handle_notification(body,
+                               strlen(body),
                                agent_config);
-
     ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));
     cv.value = value;
     ngx_http_send_response(r, NGX_HTTP_OK, &type, &cv);
