@@ -1,5 +1,5 @@
 OpenAM Policy Agent for Nginx
------------------------------
+=============================
 
 ***THIS MODULE IN THE EXPERIMENTAL PHASE***
 

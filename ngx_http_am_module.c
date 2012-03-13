@@ -252,7 +252,6 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
     char *host = NULL;
     char *path = NULL;
     char *url = NULL;
-    ngx_table_elt_t  *elts;
     size_t len = 4; // "://" + '\0'
     int is_ssl = 0;
 
@@ -270,16 +269,18 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
         len += 4;
     }
 
-    elts = r->headers_in.host;
-    if(elts){
-        if(!(host = ngx_pstrdup_nul(r->pool, &elts->value))){
+    if(r->headers_in.host){
+        if(!(host = ngx_pstrdup_nul(r->pool, &r->headers_in.host->value))){
             return NULL;
         }
-        len += elts->value.len;
+        len += r->headers_in.host->value.len;
     }else{
-        // FIXME: no Host header case
-        host = "none";
-        len += 4;
+        // no host header
+        if(!(host = ngx_pstrdup_nul(r->pool,
+                                    (ngx_str_t *)&ngx_cycle->hostname))){
+            return NULL;
+        }
+        len += ngx_cycle->hostname.len;
     }
 
     // Should we chop query parameter from the uri?
