@@ -3,8 +3,6 @@ OpenAM Policy Agent for Nginx
 
 ***THIS MODULE IN THE EXPERIMENTAL PHASE***
 
-***JUST WAIT A LITTLE LONGER WHEN USING YOUR PRODUCTION ENVIROMENT***
-
 # Platforms
 
 Currently, This module will works Linux only. I'm testing Scientific
@@ -76,5 +74,6 @@ If you found some problem, then please send me the debug logfile.
     error_log  logs/error.log debug_http;
 
 # TODO
+ * build script
  * POST data handling
  * notification handling with multi processes

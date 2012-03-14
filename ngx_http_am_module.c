@@ -164,6 +164,7 @@ ngx_http_am_set_header_in_request(void **args,
 {
     ngx_http_request_t *r = args[0];
     ngx_table_elt_t *header;
+
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_set_header_in_request() "
                   "key=%s, val=%s", key, val?val:"(null)");
@@ -175,7 +176,6 @@ ngx_http_am_set_header_in_request(void **args,
         // ignore cookie header
         return AM_SUCCESS;
     }
-
     header = ngx_list_push(&r->headers_in.headers);
     if(!header){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -183,13 +183,25 @@ ngx_http_am_set_header_in_request(void **args,
         return AM_FAILURE;
     }
 
+    header->hash = 0;
     header->key.len = strlen(key);
     header->key.data = ngx_palloc(r->pool, header->key.len);
+    if(!header->key.data){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return AM_FAILURE;
+    }
     ngx_memcpy(header->key.data, key, header->key.len);
 
     header->value.len = strlen(val);
     header->value.data = ngx_palloc(r->pool, header->value.len);
+    if(!header->value.data){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return AM_FAILURE;
+    }
     ngx_memcpy(header->value.data, val, header->value.len);
+
     return AM_SUCCESS;
 }
 
@@ -199,11 +211,41 @@ ngx_http_am_add_header_in_response(void **args,
                                    const char *val)
 {
     ngx_http_request_t *r = args[0];
-    am_status_t sts = AM_SUCCESS;
+    ngx_table_elt_t *header;
+
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_add_header_in_response() "
                   "key=%s, val=%s", key, val);
-    return sts;
+    if(!val){
+        return AM_SUCCESS;
+    }
+    header = ngx_list_push(&r->headers_out.headers);
+    if(!header){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return AM_FAILURE;
+    }
+
+    header->hash = 1;
+    header->key.len = strlen(key);
+    header->key.data = ngx_palloc(r->pool, header->key.len);
+    if(!header->key.data){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return AM_FAILURE;
+    }
+    ngx_memcpy(header->key.data, key, header->key.len);
+
+    header->value.len = strlen(val);
+    header->value.data = ngx_palloc(r->pool, header->value.len);
+    if(!header->value.data){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return AM_FAILURE;
+    }
+    ngx_memcpy(header->value.data, val, header->value.len);
+
+    return AM_SUCCESS;
 }
 
 /*
@@ -275,7 +317,7 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
         }
         len += r->headers_in.host->value.len;
     }else{
-        // no host header
+        // using gethostname(2) when no host header.
         if(!(host = ngx_pstrdup_nul(r->pool,
                                     (ngx_str_t *)&ngx_cycle->hostname))){
             return NULL;
@@ -453,6 +495,9 @@ ngx_http_am_exit_process(ngx_cycle_t *cycle)
     am_cleanup();
 }
 
+/*
+ * calculate chain buffer size.
+ */
 static size_t ngx_chain_size(ngx_chain_t *chain){
     size_t size = 0;
     while(chain && chain->buf){
