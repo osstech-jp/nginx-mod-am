@@ -344,15 +344,15 @@ static ngx_int_t
 ngx_http_am_setup_request_parms(ngx_http_request_t *r,
                                 am_web_request_params_t *parms){
     memset(parms, 0, sizeof(am_web_request_params_t));
-    char *url = ngx_http_am_get_url(r);
-    if(!url){
+    parms->url = ngx_http_am_get_url(r);
+    if(!parms->url){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
         return NGX_ERROR;
     }
 
-    char *query = ngx_pstrdup_nul(r->pool, &r->args);
-    if(!query){
+    parms->query = ngx_pstrdup_nul(r->pool, &r->args);
+    if(!parms->query){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
         return NGX_ERROR;
@@ -364,20 +364,27 @@ ngx_http_am_setup_request_parms(ngx_http_request_t *r,
                       "insufficient memory");
         return NGX_ERROR;
     }
-    char *addr = ngx_pstrdup_nul(r->pool, &r->connection->addr_text);
-    if(!addr){
+    parms->method = am_web_method_str_to_num(method);
+
+    parms->path_info = ngx_pstrdup_nul(r->pool, &r->unparsed_uri);
+    if(!parms->path_info){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
         return NGX_ERROR;
     }
-    char *cookie = ngx_http_am_get_cookie(r);
+    char *arg = ngx_strchr(parms->path_info, '?');
+    if(arg){
+        *arg = '\0';
+    }
 
-    parms->url = url;
-    parms->query = query;
-    parms->method = am_web_method_str_to_num(method);
-    parms->path_info = NULL; // TODO: What is using the parameter for?
-    parms->client_ip = addr;
-    parms->cookie_header_val = cookie;
+    parms->client_ip = ngx_pstrdup_nul(r->pool, &r->connection->addr_text);
+    if(!parms->client_ip){
+        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                      "insufficient memory");
+        return NGX_ERROR;
+    }
+
+    parms->cookie_header_val = ngx_http_am_get_cookie(r);
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "Request Params: url=%s, query=%s, method=%s, "
