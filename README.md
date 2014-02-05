@@ -1,65 +1,71 @@
 OpenAM Policy Agent for Nginx
 =============================
 
-***THIS MODULE IN THE EXPERIMENTAL PHASE***
+# Supported Platforms
 
-# Platforms
+ - Red Hat Enterprise Linux 6.0
+ - Scientific Linux 6
+ - CentOS 6
+ - Debian 7
+ - Ubuntu 12
 
-Currently, This module will works Linux only. I'm testing Scientific
-Linux 6 and Debian Wheezy.
+# Requirement library
 
-# Build Instructions
+You need to install folowing library due to the nginx agent linked the
+library dynamical.
 
- 1. Build libamsdk
+ - RHEL/CentOS
+    # yum install nspr nss openssl
 
-    libamsdk's build instructions is here:
+ - Debian/Ubuntu
+    # apt-get install libnspr4 libnss3 libssl1.0.0
 
-    <OPENAM_DIR>/products/webagents/docs/Linux/apache/README.txt
+# Agent Installation
 
-    But we are not following the instructions. Our libamsdk is dynamic
-    linked with libxml2, nss and nspr that is provided Linux
-    distribution.
+## Steps
 
-    Therefore, this module building may fail.
-    We'll distribute our libamsdk binary if your request.
+ 1. Extract nginx_Linux_64_agent_rXXXX.zip installation bits.
 
- 2. Download nginx policy agent
+    # unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
 
-    This is temporary repository:
+ 2. Goto web_agents/nginx_agent
 
-        $ git clone https://bitbucket.org/hamano/nginx-mod-am.git
+    # cd /opt/web_agents/nginx_agent/
 
- 3. Edit nginx-mod-am/config file
+ 3. Execute agentadmin.sh
 
-    Specify libamsdk location:
+    # ./bin/agentadmin.sh
 
-        AM_INC=<OPENAM_DIR>/products/webagents/built/include/
-        AM_LIB=<OPENAM_DIR>/products/webagents/built/Linux/lib/
+ 4. Follow the installation interactions and provide these details:
 
- 4. Download stable nginx
+ - OpenSSO server URL
+ - Agent URL
+ - Agent Profile name
+ - Agent Password
 
-    http://nginx.org/en/download.html
+ 5. Execute nginx
 
-        $ wget http://nginx.org/download/nginx-1.0.13.tar.gz
-        $ tar xzf nginx-1.0.13.tar.gz
-        $ cd nginx-1.0.13
-        $ ./configure --prefix=<NGINX_INSTALL_DIR> \
-            --add-module=../nginx-mod-am --with-http_ssl_module
-        $ make
-        # make install
+    # ./bin/nginx
 
-    Currently Nginx does not suppot DSO(dynamic loadable module) yet, But
-    probably it will support at an early date.
+# Agent Uninstallation
 
-# Configuration
+stop nginx and delete web_agents/nginx_agent directory.
 
-Add the following line to http context in nginx.conf.
-Property file is taken from another agent.
+# Nginx Configuration
+
+agentadmin.sh aready added following configuration:
 
     http {
         ...
         am_boot_file "/path/to/OpenSSOAgentBootstrap.properties";
         am_conf_file "/path/to/OpenSSOAgentConfiguration.properties";
+
+If you want to use nginx as a reverce proxy.
+
+    location / {
+        ...
+        proxy_pass        http://example.com:80/;
+        proxy_set_header  X-Real-IP  $remote_addr;
 
 Currently I recommend one worker process because multi process mode
 does not work notification from OpenAM.
@@ -71,9 +77,4 @@ work very well with only one process.
 
 If you found some problem, then please send me the debug logfile.
 
-    error_log  logs/error.log debug_http;
-
-# TODO
- * build script
- * POST data handling
- * notification handling with multi processes
+    error_log logs/error.log debug_http;

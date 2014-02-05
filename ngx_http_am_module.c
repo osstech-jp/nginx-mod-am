@@ -35,6 +35,9 @@ typedef struct{
     ngx_str_t conf_file;
 }ngx_http_am_main_conf_t;
 
+void *agent_config = NULL;
+boolean_t agent_initialized = B_FALSE;
+
 static ngx_int_t ngx_http_am_init(ngx_conf_t *cf);
 static void *ngx_http_am_create_main_conf(ngx_conf_t *cf);
 static char *ngx_http_am_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -87,14 +90,68 @@ ngx_module_t ngx_http_am_module = {
     NGX_MODULE_V1_PADDING
 };
 
+static void
+ngx_http_am_read_body_handler(ngx_http_request_t *r){
+    ngx_http_finalize_request(r, NGX_DONE);
+}
+
+static am_status_t
+ngx_http_am_get_post_data(void **args, char **rbuf){
+    ngx_http_request_t *r = args[0];
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "ngx_http_am_get_post_data()");
+
+    *rbuf = ngx_palloc(r->pool, r->headers_in.content_length_n + 1);
+    if(!*rbuf){
+        return AM_FAILURE;
+    }
+    int rc;
+    rc = ngx_http_read_client_request_body(r, ngx_http_am_read_body_handler);
+    ngx_chain_t *bufs = r->request_body->bufs;
+    int len;
+    int pos = 0;
+    do{
+        len = bufs->buf->last - bufs->buf->pos;
+        memcpy(*rbuf + pos, bufs->buf->pos, len);
+        pos += len;
+    }while((bufs = bufs->next));
+
+/*
+    (*rbuf)[pos] = '\0';
+    printf("body: %s\n", *rbuf);
+*/
+    return AM_SUCCESS;
+}
+
 static am_status_t
 ngx_http_am_set_user(void **args, const char *user)
 {
     am_status_t st = AM_SUCCESS;
     ngx_http_request_t *r = args[0];
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
-                  "user=%s", user);
+                  "set_user: %s", user);
     return st;
+}
+
+static am_status_t
+ngx_http_am_set_method(void **args, am_web_req_method_t method){
+    ngx_http_request_t *r = args[0];
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "set_method: %d", method);
+    switch(method){
+    case AM_WEB_REQUEST_GET:
+        r->method = NGX_HTTP_GET;
+        break;
+    case AM_WEB_REQUEST_POST:
+        r->method = NGX_HTTP_POST;
+        break;
+    default:
+        ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                      "set_method(%s) is not implement yet.",
+                      am_web_method_num_to_str(method));
+        return AM_INVALID_ARGUMENT;
+    }
+    return AM_SUCCESS;
 }
 
 static am_status_t
@@ -114,11 +171,39 @@ ngx_http_am_render_result(void **args, am_web_result_t result, char *data)
         *ret = NGX_DECLINED;
         break;
     case AM_WEB_RESULT_OK_DONE:
-        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
-                      "openam responsed AM_WEB_RESULT_OK_DONE. "
-                      "I don't know this case, please tell me how to reproduce"
-            );
-        *ret = NGX_DECLINED;
+        if(!data){
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "ok_done data is null.");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        header = ngx_list_push(&r->headers_out.headers);
+        if(!header){
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "insufficient memory");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+
+        ngx_buf_t buf;
+        ngx_chain_t out;
+        out.buf = &buf;
+        out.next = NULL;
+        buf.pos = (u_char*)data;
+        buf.last = (u_char*)data + strlen(data);
+        buf.memory = 1;
+        buf.last_buf = 1;
+        r->headers_out.content_length_n = strlen(data);
+        r->headers_out.content_type.data = (u_char *)"text/html";
+        r->headers_out.content_type.len = 9;
+        r->headers_out.status = NGX_HTTP_OK;
+
+        ngx_http_send_header(r);
+
+        if(ngx_http_output_filter(r, &out)){
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "error at ngx_http_output_filter()");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+        *ret = NGX_HTTP_OK;
         break;
     case AM_WEB_RESULT_REDIRECT:
         if(!data){
@@ -157,26 +242,177 @@ ngx_http_am_render_result(void **args, am_web_result_t result, char *data)
     return st;
 }
 
-am_status_t
+/*
+ * lookup header slow version
+ * TODO: quick search does not working
+ * see http://wiki.nginx.org/HeadersManagement
+ */
+ngx_table_elt_t *ngx_http_am_lookup_header(ngx_http_request_t *r,
+                                           u_char *key)
+{
+    ngx_list_part_t *part;
+    ngx_table_elt_t *h;
+    ngx_uint_t i;
+    size_t len = strlen((char *)key);
+
+    part = &r->headers_in.headers.part;
+    h = part->elts;
+    for (i = 0; ; i++) {
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+        if (len != h[i].key.len || ngx_strcasecmp(key, h[i].key.data) != 0) {
+            continue;
+        }
+        return &h[i];
+    }
+    return NULL;
+}
+
+/*
+ * delete header utility
+ * The crazy utility was written because nginx have no unsetting
+ * header function like a apr_table_unset().
+ * This will replace when correct way is available.
+ */
+ngx_int_t
+ngx_http_am_delete_header_part(ngx_list_t *l,
+                               ngx_list_part_t *cur,
+                               ngx_uint_t i)
+{
+    ngx_table_elt_t *elts = cur->elts;
+    ngx_list_part_t *new, *part;
+
+    if (i == 0) {
+        cur->elts = (char *) cur->elts + l->size;
+        cur->nelts--;
+
+        if (cur == l->last) {
+            if (l->nalloc > 1) {
+                l->nalloc--;
+                return NGX_OK;
+            }
+            part = &l->part;
+            while (part->next != cur) {
+                if (part->next == NULL) {
+                    return NGX_ERROR;
+                }
+                part = part->next;
+            }
+            part->next = NULL;
+            l->last = part;
+            return NGX_OK;
+        }
+
+        if (cur->nelts == 0) {
+            part = &l->part;
+            while (part->next != cur) {
+                if (part->next == NULL) {
+                    return NGX_ERROR;
+                }
+                part = part->next;
+            }
+
+            part->next = cur->next;
+            return NGX_OK;
+        }
+        return NGX_OK;
+    }
+
+    if (i == cur->nelts - 1) {
+        cur->nelts--;
+        if (cur == l->last) {
+            l->nalloc--;
+        }
+        return NGX_OK;
+    }
+
+    new = ngx_palloc(l->pool, sizeof(ngx_list_part_t));
+    if (new == NULL) {
+        return NGX_ERROR;
+    }
+
+    new->elts = &elts[i + 1];
+    new->nelts = cur->nelts - i - 1;
+    new->next = cur->next;
+
+    l->nalloc = new->nelts;
+
+    cur->nelts = i;
+    cur->next = new;
+    if (cur == l->last) {
+        l->last = new;
+    }
+
+    cur = new;
+    return NGX_OK;
+}
+
+/*
+ * delete header if exists
+ */
+void ngx_http_am_delete_header(ngx_http_request_t *r,
+                               u_char *key)
+{
+    ngx_list_part_t *part;
+    ngx_table_elt_t *h;
+    ngx_uint_t i;
+    size_t len = strlen((char *)key);
+
+    part = &r->headers_in.headers.part;
+    h = part->elts;
+    for (i = 0; ; i++) {
+        if (i >= part->nelts) {
+            if (part->next == NULL) {
+                break;
+            }
+            part = part->next;
+            h = part->elts;
+            i = 0;
+        }
+        if (len == h[i].key.len && ngx_strcasecmp(key, h[i].key.data) == 0) {
+            /* This is incompletion. */
+            /*
+              h[i].hash = 0;
+              h[i].key.len = 0;
+              h[i].key.data = NULL;
+              h[i].value.len = 0;
+              h[i].value.data = NULL;
+            */
+            ngx_http_am_delete_header_part(&r->headers_in.headers, part, i);
+        }
+    }
+}
+
+static am_status_t
 ngx_http_am_set_header_in_request(void **args,
                                   const char *key,
                                   const char *val)
 {
     ngx_http_request_t *r = args[0];
-    ngx_table_elt_t *header;
+    ngx_table_elt_t *header = NULL;
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_set_header_in_request() "
                   "key=%s, val=%s", key, val?val:"(null)");
+
+    // delete header if val is NULL
     if(!val){
+        ngx_http_am_delete_header(r, (u_char *)key);
         return AM_SUCCESS;
     }
 
-    if(!strcasecmp(key, "cookie")){
-        // ignore cookie header
-        return AM_SUCCESS;
+    // overwrite header if key exist
+    header = ngx_http_am_lookup_header(r, (u_char *)key);
+    if(!header){
+        // add header
+        header = ngx_list_push(&r->headers_in.headers);
     }
-    header = ngx_list_push(&r->headers_in.headers);
     if(!header){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
@@ -205,7 +441,7 @@ ngx_http_am_set_header_in_request(void **args,
     return AM_SUCCESS;
 }
 
-am_status_t
+static am_status_t
 ngx_http_am_add_header_in_response(void **args,
                                    const char *key,
                                    const char *val)
@@ -247,6 +483,20 @@ ngx_http_am_add_header_in_response(void **args,
 
     return AM_SUCCESS;
 }
+
+/*
+static am_status_t
+ngx_http_am_check_postdata(void **args,
+                           const char *requestURL,
+                           char **page,
+                           const unsigned long postcacheentry_life) {
+    ngx_http_request_t *r = args[0];
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "ngx_http_am_check_postdata() "
+                  "requestURL=%s", requestURL);
+    return AM_SUCCESS;
+}
+*/
 
 /*
  * duplicate null-terminated string from pascal string.
@@ -296,6 +546,7 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
     char *url = NULL;
     size_t len = 4; // "://" + '\0'
     int is_ssl = 0;
+    int i;
 
 #if (NGX_HTTP_SSL)
     /* detect SSL connection */
@@ -331,11 +582,26 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
     if(!(path = ngx_pstrdup_nul(r->pool, &r->unparsed_uri))){
         return NULL;
     }
+
+    /*
+     * trailing slashs.
+     * see https://bugster.forgerock.org/jira/browse/OPENAM-2969
+     */
+    for(i = r->unparsed_uri.len - 1; i >= 0; i--){
+        if(path[i] == '/'){
+            path[i] = '\0';
+        }else{
+            break;
+        }
+    }
+
     if(!(url = ngx_pnalloc(r->pool, len))){
         return NULL;
     }
-    // construct url PROTO://HOST:PORT/PATH
-    // No need to append default port(80 or 443), may be...
+    /*
+     * construct url PROTO://HOST:PORT/PATH
+     * No need to append default port(80 or 443), may be...
+     */
     snprintf(url, len, "%s://%s%s", proto, host, path);
     return url;
 }
@@ -364,18 +630,19 @@ ngx_http_am_setup_request_parms(ngx_http_request_t *r,
                       "insufficient memory");
         return NGX_ERROR;
     }
-    parms->method = am_web_method_str_to_num(method);
 
-    parms->path_info = ngx_pstrdup_nul(r->pool, &r->unparsed_uri);
-    if(!parms->path_info){
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "insufficient memory");
-        return NGX_ERROR;
+    parms->method = am_web_method_str_to_num(method);
+    if(parms->method == AM_WEB_REQUEST_UNKNOWN){
+        ngx_log_error(NGX_LOG_WARN, r->connection->log, 0,
+                      "unknown request method: %s", method);
+        return NGX_HTTP_NOT_ALLOWED;
     }
-    char *arg = ngx_strchr(parms->path_info, '?');
-    if(arg){
-        *arg = '\0';
-    }
+
+    /*
+     * parms->path_info should be empty string in the same behavior as
+     * apache22 agent.
+     */
+    parms->path_info = "";
 
     parms->client_ip = ngx_pstrdup_nul(r->pool, &r->connection->addr_text);
     if(!parms->client_ip){
@@ -402,14 +669,25 @@ ngx_http_am_setup_request_func(ngx_http_request_t *r,
                                void **args
     ){
     memset((void *)func, 0, sizeof(am_web_request_func_t));
+
+    func->get_post_data.func = ngx_http_am_get_post_data;
+    func->get_post_data.args = args;
     func->set_user.func = ngx_http_am_set_user;
     func->set_user.args = args;
+    func->set_method.func = ngx_http_am_set_method;
+    func->set_method.args = args;
+
     func->render_result.func = ngx_http_am_render_result;
     func->render_result.args = args;
     func->set_header_in_request.func = ngx_http_am_set_header_in_request;
     func->set_header_in_request.args = args;
     func->add_header_in_response.func = ngx_http_am_add_header_in_response;
     func->add_header_in_response.args = args;
+
+/* not implement yet
+    func->check_postdata.func = ngx_http_am_check_postdata;
+    func->check_postdata.args = args;
+*/
     return NGX_OK;
 }
 
@@ -417,8 +695,8 @@ static ngx_int_t
 ngx_http_am_init(ngx_conf_t *cf)
 {
     ngx_log_error(NGX_LOG_DEBUG, cf->log, 0, "ngx_http_am_init()");
-    ngx_http_handler_pt        *h;
-    ngx_http_core_main_conf_t  *cmcf;
+    ngx_http_handler_pt       *h;
+    ngx_http_core_main_conf_t *cmcf;
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
@@ -467,12 +745,14 @@ static ngx_int_t ngx_http_am_init_process(ngx_cycle_t *cycle)
 {
     ngx_http_am_main_conf_t *conf;
     am_status_t status;
-    boolean_t initialized = B_FALSE;
+    char *agent_version[4];
 
-    ngx_log_error(NGX_LOG_DEBUG, cycle->log, 0,
-                  "ngx_http_am_init_process()");
-
+    ngx_log_error(NGX_LOG_INFO, cycle->log, 0, "ngx_http_am_init_process()");
     conf = ngx_http_cycle_get_module_main_conf(cycle, ngx_http_am_module);
+
+    am_agent_version(agent_version);
+    ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
+                  "version: %s, date: %s", agent_version[0], agent_version[2]);
 
     // TODO: is this safe?(null-terminated?)
     status = am_web_init((char *)conf->boot_file.data,
@@ -485,12 +765,19 @@ static ngx_int_t ngx_http_am_init_process(ngx_cycle_t *cycle)
     }
 
     // No need to synchronize due to nginx is single thread model.
-    status = am_agent_init(&initialized);
+    status = am_agent_init(&agent_initialized);
     if(status != AM_SUCCESS){
-        ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
                       "am_agent_init error status=%s(%d)",
                       am_status_to_name(status), status);
-        return NGX_ERROR;
+        // retry init at requesting time
+    }
+
+    agent_config = am_web_get_agent_configuration();
+    if(!agent_config){
+        ngx_log_error(NGX_LOG_WARN, cycle->log, 0,
+                      "error at am_web_get_agent_configuration()");
+        // retry at requesting time
     }
 
     return NGX_OK;
@@ -499,7 +786,7 @@ static ngx_int_t ngx_http_am_init_process(ngx_cycle_t *cycle)
 static void
 ngx_http_am_exit_process(ngx_cycle_t *cycle)
 {
-    am_cleanup();
+    am_web_cleanup();
 }
 
 /*
@@ -577,45 +864,63 @@ static ngx_int_t
 ngx_http_am_handler(ngx_http_request_t *r)
 {
     am_status_t status;
-    int ret = NGX_HTTP_INTERNAL_SERVER_ERROR;
     am_web_result_t result;
     am_web_request_params_t req_params;
     am_web_request_func_t req_func;
+    ngx_int_t err = NGX_ERROR;
+    int ret = NGX_HTTP_INTERNAL_SERVER_ERROR;
     void *args[2] = {r, &ret};
-    void *agent_config = NULL;
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_handler()");
 
-    /* we response to 'GET' and 'HEAD' and 'POST' requests only */
-    if (!(r->method & (NGX_HTTP_GET|NGX_HTTP_HEAD|NGX_HTTP_POST))) {
-        return NGX_HTTP_NOT_ALLOWED;
+    // internal request is permitted unconditionally
+    if(r->internal){
+        return NGX_DECLINED;
     }
 
-    if(ngx_http_am_setup_request_parms(r, &req_params) != NGX_OK){
+    if(agent_initialized == B_FALSE){
+        // No need to lock, Bravo NGINX!
+        status = am_agent_init(&agent_initialized);
+        if(status != AM_SUCCESS){
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "am_agent_init error status=%s(%d)",
+                          am_status_to_name(status), status);
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    if(!agent_config){
+        agent_config = am_web_get_agent_configuration();
+        if(!agent_config){
+            ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                          "error at am_web_get_agent_configuration()");
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        }
+    }
+
+    err = ngx_http_am_setup_request_parms(r, &req_params);
+    if(err == NGX_HTTP_NOT_ALLOWED){
+        return err;
+    }else if(err != NGX_OK){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "error at ngx_http_am_setup_request_parms()");
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    agent_config = am_web_get_agent_configuration();
-    if(!agent_config){
-        ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
-                      "error at am_web_get_agent_configuration()");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
-    }
-
     if(am_web_is_notification(req_params.url, agent_config) == B_TRUE){
         // Hmmm, How I notify to all process when working multiprocess mode.
+        ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                      "notification request.");
         ret = ngx_http_am_notification_handler(r, agent_config);
         am_web_delete_agent_configuration(agent_config);
+        agent_config = NULL;
         return ret;
     }
 
     if(ngx_http_am_setup_request_func(r, &req_func, args) != NGX_OK){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "error at ngx_http_am_setup_request_func()");
-        am_web_delete_agent_configuration(agent_config);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
@@ -625,11 +930,9 @@ ngx_http_am_handler(ngx_http_request_t *r)
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "am_web_process_request error. "
                       "status=%s(%d)", am_status_to_name(status), status);
-        am_web_delete_agent_configuration(agent_config);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    am_web_delete_agent_configuration(agent_config);
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "return code=%d", ret);
     return ret;
