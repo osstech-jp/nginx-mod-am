@@ -829,6 +829,7 @@ static char *ngx_chain_cat(ngx_http_request_t *r, ngx_chain_t *chain){
 static void
 ngx_http_am_read_body(ngx_http_request_t *r)
 {
+    ngx_http_finalize_request(r, NGX_DONE);
 }
 
 static ngx_int_t
