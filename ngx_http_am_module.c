@@ -130,6 +130,10 @@ ngx_http_am_set_user(void **args, const char *user)
     ngx_http_request_t *r = args[0];
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "set_user: %s", user);
+
+    r->headers_in.user.len = strlen(user);
+    r->headers_in.user.data = ngx_palloc(r->pool, r->headers_in.user.len);
+    ngx_memcpy(r->headers_in.user.data, user, r->headers_in.user.len);
     return st;
 }
 
