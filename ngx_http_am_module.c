@@ -835,14 +835,19 @@ ngx_http_am_read_body(ngx_http_request_t *r)
 static ngx_int_t
 ngx_http_am_notification_handler(ngx_http_request_t *r, void *agent_config)
 {
-    ngx_int_t ret;
+    ngx_int_t rc;
     static ngx_str_t type = ngx_string("text/plain");
     static ngx_str_t value = ngx_string("OK\n");
     ngx_http_complex_value_t cv;
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "notification request.");
 
-    ret = ngx_http_read_client_request_body(r, ngx_http_am_read_body);
+    rc = ngx_http_read_client_request_body(r, ngx_http_am_read_body);
+    if(rc == NGX_AGAIN){
+        ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "ngx_http_read_client_request_body() returned NGX_AGAIN.");
+        return rc;
+    }
+
     if(!r->request_body || !r->request_body->bufs){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "no request body.");
