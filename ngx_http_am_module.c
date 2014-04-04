@@ -826,32 +826,20 @@ static char *ngx_chain_cat(ngx_http_request_t *r, ngx_chain_t *chain){
     return buf;
 }
 
+/*
+ * The function called when finished post data reading.
+ */
 static void
 ngx_http_am_read_body(ngx_http_request_t *r)
 {
-    ngx_http_finalize_request(r, NGX_DONE);
-}
-
-static ngx_int_t
-ngx_http_am_notification_handler(ngx_http_request_t *r, void *agent_config)
-{
-    ngx_int_t rc;
     static ngx_str_t type = ngx_string("text/plain");
     static ngx_str_t value = ngx_string("OK\n");
     ngx_http_complex_value_t cv;
-    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
-                  "notification request.");
-
-    rc = ngx_http_read_client_request_body(r, ngx_http_am_read_body);
-    if(rc == NGX_AGAIN){
-        ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0, "ngx_http_read_client_request_body() returned NGX_AGAIN.");
-        return rc;
-    }
 
     if(!r->request_body || !r->request_body->bufs){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "no request body.");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
     // concatnate chain buffer.
@@ -859,15 +847,25 @@ ngx_http_am_notification_handler(ngx_http_request_t *r, void *agent_config)
     if(!body){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
-        return NGX_HTTP_INTERNAL_SERVER_ERROR;
+        ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
+
     am_web_handle_notification(body,
                                strlen(body),
                                agent_config);
+
     ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));
     cv.value = value;
     ngx_http_send_response(r, NGX_HTTP_OK, &type, &cv);
-    return NGX_HTTP_OK;
+}
+
+static ngx_int_t
+ngx_http_am_notification_handler(ngx_http_request_t *r)
+{
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "notification request.");
+    ngx_http_read_client_request_body(r, ngx_http_am_read_body);
+    return NGX_DONE;
 }
 
 static ngx_int_t
@@ -922,9 +920,7 @@ ngx_http_am_handler(ngx_http_request_t *r)
         // Hmmm, How I notify to all process when working multiprocess mode.
         ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                       "notification request.");
-        ret = ngx_http_am_notification_handler(r, agent_config);
-        am_web_delete_agent_configuration(agent_config);
-        agent_config = NULL;
+        ret = ngx_http_am_notification_handler(r);
         return ret;
     }
 
