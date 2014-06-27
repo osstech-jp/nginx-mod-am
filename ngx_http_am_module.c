@@ -35,6 +35,10 @@ typedef struct{
     ngx_str_t conf_file;
 }ngx_http_am_main_conf_t;
 
+typedef struct {
+    unsigned waiting_more_body:1;
+} ngx_http_am_ctx_t;
+
 void *agent_config = NULL;
 boolean_t agent_initialized = B_FALSE;
 
@@ -90,9 +94,48 @@ ngx_module_t ngx_http_am_module = {
     NGX_MODULE_V1_PADDING
 };
 
+/*
+ * calculate chain buffer size.
+ */
+static size_t ngx_chain_size(ngx_chain_t *chain){
+    size_t size = 0;
+    while(chain && chain->buf){
+        size += ngx_buf_size(chain->buf);
+        chain = chain->next;
+    }
+    return size;
+}
+
+/*
+ * concatnate chain buffer.
+ */
+static char *ngx_chain_cat(ngx_http_request_t *r, ngx_chain_t *chain){
+    size_t size = ngx_chain_size(chain);
+    char *buf = ngx_palloc(r->pool, size + 1);
+    if(!buf){
+        return NULL;
+    }
+    char *p = buf;
+    while(chain && chain->buf){
+        ngx_memcpy(p,
+                   chain->buf->pos,
+                   ngx_buf_size(chain->buf));
+        p = p + ngx_buf_size(chain->buf);
+        chain = chain->next;
+    }
+    buf[size] = '\0';
+    return buf;
+}
+
 static void
 ngx_http_am_read_body_handler(ngx_http_request_t *r){
-    ngx_http_finalize_request(r, NGX_DONE);
+    ngx_http_am_ctx_t *ctx;
+    ctx = ngx_http_get_module_ctx(r, ngx_http_am_module);
+    if (ctx->waiting_more_body) {
+        ngx_http_core_run_phases(r);
+    } else {
+        ngx_http_finalize_request(r, NGX_DONE);
+    }
 }
 
 static am_status_t
@@ -100,25 +143,13 @@ ngx_http_am_get_post_data(void **args, char **rbuf){
     ngx_http_request_t *r = args[0];
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_get_post_data()");
-
-    *rbuf = ngx_palloc(r->pool, r->headers_in.content_length_n + 1);
+    *rbuf = ngx_chain_cat(r, r->request_body->bufs);
     if(!*rbuf){
         return AM_FAILURE;
     }
-    int rc;
-    rc = ngx_http_read_client_request_body(r, ngx_http_am_read_body_handler);
-    ngx_chain_t *bufs = r->request_body->bufs;
-    int len;
-    int pos = 0;
-    do{
-        len = bufs->buf->last - bufs->buf->pos;
-        memcpy(*rbuf + pos, bufs->buf->pos, len);
-        pos += len;
-    }while((bufs = bufs->next));
-
 /*
-    (*rbuf)[pos] = '\0';
-    printf("body: %s\n", *rbuf);
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "body: %s\n", *rbuf);
 */
     return AM_SUCCESS;
 }
@@ -793,45 +824,12 @@ ngx_http_am_exit_process(ngx_cycle_t *cycle)
     am_web_cleanup();
 }
 
-/*
- * calculate chain buffer size.
- */
-static size_t ngx_chain_size(ngx_chain_t *chain){
-    size_t size = 0;
-    while(chain && chain->buf){
-        size += ngx_buf_size(chain->buf);
-        chain = chain->next;
-    }
-    return size;
-}
-
-/*
- * concatnate chain buffer.
- */
-static char *ngx_chain_cat(ngx_http_request_t *r, ngx_chain_t *chain){
-    size_t size = ngx_chain_size(chain);
-    char *buf = ngx_palloc(r->pool, size + 1);
-    if(!buf){
-        return NULL;
-    }
-    char *p = buf;
-    while(chain && chain->buf){
-        ngx_memcpy(p,
-                   chain->buf->pos,
-                   ngx_buf_size(chain->buf));
-        p = p + ngx_buf_size(chain->buf);
-        chain = chain->next;
-    }
-    buf[size] = '\0';
-    return buf;
-}
-
-/*
- * The function called when finished post data reading.
- */
-static void
-ngx_http_am_read_body(ngx_http_request_t *r)
+static ngx_int_t
+ngx_http_am_notification_handler(ngx_http_request_t *r)
 {
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "notification request.");
+
     static ngx_str_t type = ngx_string("text/plain");
     static ngx_str_t value = ngx_string("OK\n");
     ngx_http_complex_value_t cv;
@@ -850,21 +848,11 @@ ngx_http_am_read_body(ngx_http_request_t *r)
         ngx_http_finalize_request(r, NGX_HTTP_INTERNAL_SERVER_ERROR);
     }
 
-    am_web_handle_notification(body,
-                               strlen(body),
-                               agent_config);
+    am_web_handle_notification(body, strlen(body), agent_config);
 
     ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));
     cv.value = value;
     ngx_http_send_response(r, NGX_HTTP_OK, &type, &cv);
-}
-
-static ngx_int_t
-ngx_http_am_notification_handler(ngx_http_request_t *r)
-{
-    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
-                  "notification request.");
-    ngx_http_read_client_request_body(r, ngx_http_am_read_body);
     return NGX_DONE;
 }
 
@@ -878,6 +866,7 @@ ngx_http_am_handler(ngx_http_request_t *r)
     ngx_int_t err = NGX_ERROR;
     int ret = NGX_HTTP_INTERNAL_SERVER_ERROR;
     void *args[2] = {r, &ret};
+    ngx_http_am_ctx_t *ctx;
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_handler()");
@@ -885,6 +874,23 @@ ngx_http_am_handler(ngx_http_request_t *r)
     // internal request is permitted unconditionally
     if(r->internal){
         return NGX_DECLINED;
+    }
+
+    // Fetch request body before processing the request (only if POST for now)
+    ctx = ngx_http_get_module_ctx(r, ngx_http_am_module);
+    if (ctx == NULL) {
+        ctx = ngx_pcalloc(r->pool, sizeof(ngx_http_am_ctx_t));
+        if (ctx == NULL) {
+            return NGX_ERROR;
+        }
+        ngx_http_set_ctx(r, ctx, ngx_http_am_module);
+    }
+    if (r->method == NGX_HTTP_POST && !ctx->waiting_more_body) {
+        int rc = ngx_http_read_client_request_body(r, ngx_http_am_read_body_handler);
+        if (rc == NGX_AGAIN) {
+            ctx->waiting_more_body = 1;
+            return rc;
+        }
     }
 
     if(agent_initialized == B_FALSE){
@@ -937,6 +943,10 @@ ngx_http_am_handler(ngx_http_request_t *r)
                       "am_web_process_request error. "
                       "status=%s(%d)", am_status_to_name(status), status);
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
+    }
+
+    if (ctx->waiting_more_body) {
+        ngx_http_finalize_request(r, NGX_DONE);
     }
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
