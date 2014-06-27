@@ -849,6 +849,8 @@ ngx_http_am_notification_handler(ngx_http_request_t *r)
     }
 
     am_web_handle_notification(body, strlen(body), agent_config);
+    am_web_delete_agent_configuration(agent_config);
+    agent_config = NULL;
 
     ngx_memzero(&cv, sizeof(ngx_http_complex_value_t));
     cv.value = value;
