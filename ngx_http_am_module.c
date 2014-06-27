@@ -1,6 +1,11 @@
 /*
- * Copyright (C) 2012 Tsukasa Hamano <hamano@osstech.co.jp>
- * Copyright (C) 2012 Open Source Solution Technology Corporation
+ * OpenAM Policy Agent for Nginx
+ *
+ * Copyright (C) 2012-2014 Open Source Solution Technology Corporation
+ *
+ * Authors:
+ *  HAMANO Tsukasa <hamano@osstech.co.jp>
+ *  Sergio Arteaga <>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
