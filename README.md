@@ -14,11 +14,13 @@ OpenAM Policy Agent for Nginx
 You need to install folowing library due to the nginx agent linked the
 library dynamical.
 
- - RHEL/CentOS
-    # yum install nspr nss openssl
+ * RHEL/CentOS
 
- - Debian/Ubuntu
-    # apt-get install libnspr4 libnss3 libssl1.0.0
+      # yum install nspr nss openssl
+
+ * Debian/Ubuntu
+
+      # apt-get install libnspr4 libnss3 libssl1.0.0
 
 # Agent Installation
 
@@ -26,7 +28,7 @@ library dynamical.
 
  1. Extract nginx_Linux_64_agent_rXXXX.zip installation bits.
 
-    # unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
+      # unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
 
  2. Goto web_agents/nginx_agent
 
