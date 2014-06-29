@@ -32,11 +32,11 @@ library dynamical.
 
  2. Goto web_agents/nginx_agent
 
-    # cd /opt/web_agents/nginx_agent/
+      # cd /opt/web_agents/nginx_agent/
 
  3. Execute agentadmin.sh
 
-    # ./bin/agentadmin.sh
+      # ./bin/agentadmin.sh
 
  4. Follow the installation interactions and provide these details:
 
@@ -47,7 +47,7 @@ library dynamical.
 
  5. Execute nginx
 
-    # ./bin/nginx
+      # ./bin/nginx
 
 # Agent Uninstallation
 
