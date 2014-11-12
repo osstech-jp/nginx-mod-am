@@ -1,12 +1,13 @@
 OpenAM Policy Agent for Nginx
 =============================
 
-# Supported Platforms
+# Downloads
 
- - Red Hat Enterprise Linux 6/7
- - CentOS 6/7
- - Debian 7
- - Ubuntu 12
+## 20141113 Release
+
+ * [RHEL/CentOS 6 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.el6.x86_64.zip)
+ * [RHEL/CentOS 7 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.el7.x86_64.zip)
+ * [Debian/Ubuntu x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.deb.x86_64.zip)
 
 # Requirement library
 
@@ -29,16 +30,16 @@ library dynamical.
 
 ## Steps
 
- 1. Extract nginx_Linux_64_agent_rXXXX.zip installation bits.
+ 1. Extract nginx_agent_YYYYMMDD.zip installation bits.
 
  ~~~
- # unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
+ # unzip nginx_agent_YYYYMMDD.zip -d /opt
  ~~~
 
- 2. Goto web_agents/nginx_agent
+ 2. Goto nginx_agent
 
  ~~~
- # cd /opt/web_agents/nginx_agent/
+ # cd /opt/nginx_agent/
  ~~~
 
  3. Execute agentadmin.sh
