@@ -1,12 +1,10 @@
 
-AM_INC=../../../../am/source/
-AM_LIB=../../../../am/source/
-
-XML2_DIR=../../../../extlib/Linux/libxml2_64
-XML2_LIB=${XML2_DIR}/lib
+AM_INC=../extlib/include/
+AM_LIB=../extlib/lib/
 
 CFLAGS="$CFLAGS -I${AM_INC} -DLINUX"
-CORE_LIBS="$CORE_LIBS -L${AM_LIB} -Wl,-Bstatic -lamsdk -L${XML2_LIB} -lxml2 -Wl,-Bdynamic -lstdc++ -lplc4 -lplds4 -lnspr4 -lnss3 -lnssutil3"
+
+CORE_LIBS="$CORE_LIBS -L${AM_LIB} -Wl,-Bdynamic -lamsdk -lxml2 -lstdc++ -lplc4 -lplds4 -lnspr4 -lnss3 -lnssutil3"
 
 ngx_addon_name=ngx_http_am_module
 HTTP_MODULES="$HTTP_MODULES ngx_http_am_module"

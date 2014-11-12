@@ -867,7 +867,7 @@ static ngx_int_t
 ngx_http_am_handler(ngx_http_request_t *r)
 {
     am_status_t status;
-    am_web_result_t result;
+    //am_web_result_t result;
     am_web_request_params_t req_params;
     am_web_request_func_t req_func;
     ngx_int_t err = NGX_ERROR;
@@ -943,7 +943,7 @@ ngx_http_am_handler(ngx_http_request_t *r)
         return NGX_HTTP_INTERNAL_SERVER_ERROR;
     }
 
-    result = am_web_process_request(
+    /*result = */am_web_process_request(
         &req_params, &req_func, &status, agent_config);
     if(status != AM_SUCCESS){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
