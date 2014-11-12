@@ -74,7 +74,7 @@ EOF
     done
     stty echo
 
-    AGENT_HOST=`echo ${AGENT_URL}|sed -e 's|http\(s\)\?://\([^:]*\):\(.*\)|\2|'`
+    AGENT_HOST=`echo ${AGENT_URL}|sed -e 's|http\(s\)\?://\([^:]*\)\(:.*\)\?|\2|'`
     cat << EOF
 -----------------------------------------------
 SUMMARY OF YOUR RESPONSES
