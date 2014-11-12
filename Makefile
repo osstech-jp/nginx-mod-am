@@ -3,12 +3,12 @@ NGINX_URI=http://nginx.org/download/
 NGINX_VER=1.6.2
 NGINX_SRC=nginx-$(NGINX_VER).tar.gz
 
-DESTDIR=../nginx_agent/
+DESTDIR=./nginx_agent/
 
 CFLAGS=-g
 LDFLAGS=-Wl,-rpath,'\$$\$$ORIGIN/../lib'
 
-all: install
+all: dist
 
 $(NGINX_SRC):
 	wget $(NGINX_URI)$(NGINX_SRC)
@@ -32,8 +32,14 @@ build/Makefile: build
 build/bin/nginx: build/Makefile
 	make -C build
 
-install: build/bin/nginx
-	make -C build install DESTDIR="$(DESTDIR)"
+dist: build/bin/nginx
+	rm -rf $(DESTDIR)
+	make -C build install DESTDIR="../$(DESTDIR)"
+	cp -rp extlib/lib $(DESTDIR)
+	cp -rp conf $(DESTDIR)
+	mv $(DESTDIR)/conf/agentadmin.sh $(DESTDIR)/bin/
+	install -m 755 extlib/bin/crypt_util $(DESTDIR)/bin/
+	install -m 644 README.md $(DESTDIR)
 
 clean:
 	rm -rf build/Makefile build/objs/

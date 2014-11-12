@@ -102,5 +102,6 @@ https://forgerock.org/downloads/openam-builds/
 
 3. Build
 
-   $ make
+   $ make dist
+
 
