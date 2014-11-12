@@ -16,13 +16,13 @@ library dynamical.
  * RHEL/CentOS
 
 ~~~
-# yum install nspr nss openssl
+# yum install nspr nss libxml2 openssl
 ~~~
 
  * Debian/Ubuntu
 
 ~~~
-# apt-get install libnspr4 libnss3 libssl1.0.0
+# apt-get install libnspr4 libnss3 libxml2 libssl1.0.0
 ~~~
 
 # Agent Installation
