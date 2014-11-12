@@ -16,13 +16,13 @@ library dynamical.
  * RHEL/CentOS
 
 ~~~
-# yum install nspr nss libxml2 openssl
+# yum install nspr nss libxml2 pcpre openssl
 ~~~
 
  * Debian/Ubuntu
 
 ~~~
-# apt-get install libnspr4 libnss3 libxml2 libssl1.0.0
+# apt-get install libnspr4 libnss3 libxml2 libpcre3 libssl1.0.0
 ~~~
 
 # Agent Installation
@@ -99,13 +99,13 @@ If you found some problem, then please send me the debug logfile.
  for RHEL or CentOS:
 
  ~~~
- # yum install zlib-devel nspr-devel nss-devel libxml2-devel openssl-dev
+ # yum install zlib-devel nspr-devel nss-devel libxml2-devel pcre-devel openssl-dev
  ~~~
 
  for Debian:
 
  ~~~
- # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libssl-dev
+ # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libpcre3-dev libssl-dev
  ~~~
 
 2. Setup extlib

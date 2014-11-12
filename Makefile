@@ -3,7 +3,8 @@ NGINX_URI=http://nginx.org/download/
 NGINX_VER=1.6.2
 NGINX_SRC=nginx-$(NGINX_VER).tar.gz
 
-DESTDIR=./nginx_agent/
+DISTDIR=./nginx_agent
+DISTNAME=nginx_agent_`date +%Y%m%d`.`uname -m`.zip
 
 CFLAGS=-g
 LDFLAGS=-Wl,-rpath,'\$$\$$ORIGIN/../lib'
@@ -33,13 +34,14 @@ build/bin/nginx: build/Makefile
 	make -C build
 
 dist: build/bin/nginx
-	rm -rf $(DESTDIR)
-	make -C build install DESTDIR="../$(DESTDIR)"
-	cp -rp extlib/lib $(DESTDIR)
-	cp -rp conf $(DESTDIR)
-	mv $(DESTDIR)/conf/agentadmin.sh $(DESTDIR)/bin/
-	install -m 755 extlib/bin/crypt_util $(DESTDIR)/bin/
-	install -m 644 README.md $(DESTDIR)
+	rm -rf $(DISTDIR)
+	make -C build install DESTDIR="../$(DISTDIR)/"
+	cp -rp extlib/lib $(DISTDIR)
+	cp -rp conf $(DISTDIR)
+	mv $(DISTDIR)/conf/agentadmin.sh $(DISTDIR)/bin/
+	install -m 755 extlib/bin/crypt_util $(DISTDIR)/bin/
+	install -m 644 README.md $(DISTDIR)
+	zip -r $(DISTNAME) $(DISTDIR)
 
 clean:
 	rm -rf build/Makefile build/objs/
