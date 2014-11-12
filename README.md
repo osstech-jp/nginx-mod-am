@@ -31,32 +31,33 @@ library dynamical.
 
  1. Extract nginx_Linux_64_agent_rXXXX.zip installation bits.
 
-~~~
-# unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
-~~~
+ ~~~
+ # unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
+ ~~~
 
  2. Goto web_agents/nginx_agent
 
-~~~
-# cd /opt/web_agents/nginx_agent/
-~~~
+ ~~~
+ # cd /opt/web_agents/nginx_agent/
+ ~~~
 
  3. Execute agentadmin.sh
 
-~~~
-# ./bin/agentadmin.sh
-~~~
+ ~~~
+ # ./bin/agentadmin.sh
+ ~~~
 
  4. Follow the installation interactions and provide these details:
 
- - OpenSSO server URL
- - Agent URL
- - Agent Profile name
- - Agent Password
+  - OpenSSO server URL
+  - Agent URL
+  - Agent Profile name
+  - Agent Password
 
  5. Execute nginx
-
-      # ./bin/nginx
+ ~~~
+ # ./bin/nginx
+ ~~~
 
 # Agent Uninstallation
 
@@ -97,29 +98,28 @@ If you found some problem, then please send me the debug logfile.
 
  for RHEL or CentOS:
 
-~~~
-# yum install zlib-devel nspr-devel nss-devel libxml2-devel openssl-dev
-~~~
+ ~~~
+ # yum install zlib-devel nspr-devel nss-devel libxml2-devel openssl-dev
+ ~~~
 
  for Debian:
 
-~~~
-# apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libssl-dev
-~~~
+ ~~~
+ # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libssl-dev
+ ~~~
 
 2. Setup extlib
 
  You can download Agent SDK here:
  https://forgerock.org/downloads/openam-builds/
 
-~~~
-$ unzip -d extlib common_3_0_Linux_64bit.zip
-$ ln -s libamsdk.so.3 extlib/lib/libamsdk.so
-~~~
+ ~~~
+ $ unzip -d extlib common_3_0_Linux_64bit.zip
+ $ ln -s libamsdk.so.3 extlib/lib/libamsdk.so
+ ~~~
 
 3. Build
 
-~~~
-$ make dist
-~~~
-
+ ~~~
+ $ make dist
+ ~~~
