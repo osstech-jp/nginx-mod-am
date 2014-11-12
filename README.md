@@ -3,9 +3,8 @@ OpenAM Policy Agent for Nginx
 
 # Supported Platforms
 
- - Red Hat Enterprise Linux 6.0
- - Scientific Linux 6
- - CentOS 6
+ - Red Hat Enterprise Linux 6/7
+ - CentOS 6/7
  - Debian 7
  - Ubuntu 12
 
@@ -16,11 +15,15 @@ library dynamical.
 
  * RHEL/CentOS
 
-      # yum install nspr nss openssl
+~~~
+# yum install nspr nss openssl
+~~~
 
  * Debian/Ubuntu
 
-      # apt-get install libnspr4 libnss3 libssl1.0.0
+~~~
+# apt-get install libnspr4 libnss3 libssl1.0.0
+~~~
 
 # Agent Installation
 
@@ -28,15 +31,21 @@ library dynamical.
 
  1. Extract nginx_Linux_64_agent_rXXXX.zip installation bits.
 
-      # unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
+~~~
+# unzip nginx_Linux_64_agent_rXXXX.zip -d /opt
+~~~
 
  2. Goto web_agents/nginx_agent
 
-      # cd /opt/web_agents/nginx_agent/
+~~~
+# cd /opt/web_agents/nginx_agent/
+~~~
 
  3. Execute agentadmin.sh
 
-      # ./bin/agentadmin.sh
+~~~
+# ./bin/agentadmin.sh
+~~~
 
  4. Follow the installation interactions and provide these details:
 
@@ -84,7 +93,7 @@ If you found some problem, then please send me the debug logfile.
 
 # Build Instructions
 
- 1. Install Dependencies
+1. Install Dependencies
 
  for RHEL or CentOS:
 
@@ -98,7 +107,7 @@ If you found some problem, then please send me the debug logfile.
 # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libssl-dev
 ~~~
 
- 2. Setup extlib
+2. Setup extlib
 
  You can download Agent SDK here:
  https://forgerock.org/downloads/openam-builds/
@@ -108,10 +117,9 @@ $ unzip -d extlib common_3_0_Linux_64bit.zip
 $ ln -s libamsdk.so.3 extlib/lib/libamsdk.so
 ~~~
 
- 3. Build
+3. Build
 
 ~~~
 $ make dist
 ~~~
-
 
