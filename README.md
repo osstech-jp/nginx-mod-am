@@ -84,26 +84,26 @@ If you found some problem, then please send me the debug logfile.
 
 # Build Instructions
 
-1. Install Dependencies
+ 1. Install Dependencies
 
-for RHEL or CentOS:
+ for RHEL or CentOS:
 
-    # yum install zlib-devel nspr-devel nss-devel libxml2-devel openssl-dev
+     # yum install zlib-devel nspr-devel nss-devel libxml2-devel openssl-dev
 
-for Debian:
+ for Debian:
 
-    # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libssl-dev
+     # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libssl-dev
 
-2. Setup extlib
+ 2. Setup extlib
 
-You can download Agent SDK here:
-https://forgerock.org/downloads/openam-builds/
+ You can download Agent SDK here:
+ https://forgerock.org/downloads/openam-builds/
 
-    $ unzip -d extlib common_3_0_Linux_64bit.zip
-    $ ln -s libamsdk.so.3 extlib/lib/libamsdk.so
+     $ unzip -d extlib common_3_0_Linux_64bit.zip
+     $ ln -s libamsdk.so.3 extlib/lib/libamsdk.so
 
-3. Build
+ 3. Build
 
-   $ make dist
+    $ make dist
 
 
