@@ -1,7 +1,7 @@
 OpenAM Policy Agent for Nginx
 =============================
 
-# Downloads
+# Download
 
 ## 20141113 Release
 
@@ -14,14 +14,12 @@ OpenAM Policy Agent for Nginx
 You need to install folowing library due to the nginx agent linked the
 library dynamical.
 
- * RHEL/CentOS
-
+for RHEL/CentOS:
 ~~~
 # yum install nspr nss libxml2 pcpre openssl
 ~~~
 
- * Debian/Ubuntu
-
+for Debian/Ubuntu:
 ~~~
 # apt-get install libnspr4 libnss3 libxml2 libpcre3 libssl1.0.0
 ~~~
@@ -97,14 +95,12 @@ If you found some problem, then please send me the debug logfile.
 
 1. Install Dependencies
 
- for RHEL or CentOS:
-
+ for RHEL/CentOS:
  ~~~
  # yum install zlib-devel nspr-devel nss-devel libxml2-devel pcre-devel openssl-dev
  ~~~
 
- for Debian:
-
+ for Debian/Ubuntu:
  ~~~
  # apt-get install zlib1g-dev libnspr4-dev libnss3-dev libxml2-dev libpcre3-dev libssl-dev
  ~~~
