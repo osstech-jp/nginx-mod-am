@@ -1,6 +1,6 @@
 
 NGINX_URI=http://nginx.org/download/
-NGINX_VER=1.6.2
+NGINX_VER=1.7.7
 NGINX_SRC=nginx-$(NGINX_VER).tar.gz
 
 DISTDIR=./nginx_agent

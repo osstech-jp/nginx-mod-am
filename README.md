@@ -1,4 +1,4 @@
-OpenAM Policy Agent for Nginx
+OpenAM Policy Agent for NGINX
 =============================
 
 # Download
