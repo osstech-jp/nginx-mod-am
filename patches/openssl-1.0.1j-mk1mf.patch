@@ -1,0 +1,13 @@
+diff --git a/util/mk1mf.pl b/util/mk1mf.pl
+index f0c2df0..2055059 100755
+--- a/util/mk1mf.pl
++++ b/util/mk1mf.pl
+@@ -327,7 +327,7 @@ $_=<IN>;
+ for (;;)
+ 	{
+ 	chop;
+-
++    s/\r$//; #remove carriage return too!
+ 	($key,$val)=/^([^=]+)=(.*)/;
+ 	if ($key eq "RELATIVE_DIRECTORY")
+ 		{
