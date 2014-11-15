@@ -35,6 +35,10 @@
 
 #include "am_web.h"
 
+#ifdef WINNT
+#define snprintf _snprintf
+#endif
+
 typedef struct{
     ngx_str_t boot_file;
     ngx_str_t conf_file;
@@ -105,7 +109,7 @@ ngx_module_t ngx_http_am_module = {
 static size_t ngx_chain_size(ngx_chain_t *chain){
     size_t size = 0;
     while(chain && chain->buf){
-        size += ngx_buf_size(chain->buf);
+        size += (size_t)ngx_buf_size(chain->buf);
         chain = chain->next;
     }
     return size;
@@ -117,14 +121,14 @@ static size_t ngx_chain_size(ngx_chain_t *chain){
 static char *ngx_chain_cat(ngx_http_request_t *r, ngx_chain_t *chain){
     size_t size = ngx_chain_size(chain);
     char *buf = ngx_palloc(r->pool, size + 1);
+    char *p = buf;
     if(!buf){
         return NULL;
     }
-    char *p = buf;
     while(chain && chain->buf){
         ngx_memcpy(p,
                    chain->buf->pos,
-                   ngx_buf_size(chain->buf));
+                   (size_t)ngx_buf_size(chain->buf));
         p = p + ngx_buf_size(chain->buf);
         chain = chain->next;
     }
@@ -201,6 +205,8 @@ ngx_http_am_render_result(void **args, am_web_result_t result, char *data)
     ngx_http_request_t *r = args[0];
     int *ret = args[1];
     ngx_table_elt_t *header;
+    ngx_buf_t buf;
+    ngx_chain_t out;
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "RESULT=%s(%d)",
@@ -223,8 +229,6 @@ ngx_http_am_render_result(void **args, am_web_result_t result, char *data)
             return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
-        ngx_buf_t buf;
-        ngx_chain_t out;
         out.buf = &buf;
         out.next = NULL;
         buf.pos = (u_char*)data;
@@ -603,14 +607,15 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
     }
 
     if(r->headers_in.host){
-        if(!(host = ngx_pstrdup_nul(r->pool, &r->headers_in.host->value))){
+        host = ngx_pstrdup_nul(r->pool, &r->headers_in.host->value);
+        if(!host){
             return NULL;
         }
         len += r->headers_in.host->value.len;
     }else{
         // using gethostname(2) when no host header.
-        if(!(host = ngx_pstrdup_nul(r->pool,
-                                    (ngx_str_t *)&ngx_cycle->hostname))){
+        host = ngx_pstrdup_nul(r->pool, (ngx_str_t *)&ngx_cycle->hostname);
+        if(!host){
             return NULL;
         }
         len += ngx_cycle->hostname.len;
@@ -619,7 +624,8 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
     // Should we chop query parameter from the uri?
     // see http://java.net/jira/browse/OPENSSO-5552
     len += r->unparsed_uri.len;
-    if(!(path = ngx_pstrdup_nul(r->pool, &r->unparsed_uri))){
+    path = ngx_pstrdup_nul(r->pool, &r->unparsed_uri);
+    if(!path){
         return NULL;
     }
 
@@ -635,7 +641,8 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
         }
     }
 
-    if(!(url = ngx_pnalloc(r->pool, len))){
+    url = ngx_pnalloc(r->pool, len);
+    if(!url){
         return NULL;
     }
     /*
@@ -649,6 +656,7 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
 static ngx_int_t
 ngx_http_am_setup_request_parms(ngx_http_request_t *r,
                                 am_web_request_params_t *parms){
+    char *method;
     memset(parms, 0, sizeof(am_web_request_params_t));
     parms->url = ngx_http_am_get_url(r);
     if(!parms->url){
@@ -664,7 +672,7 @@ ngx_http_am_setup_request_parms(ngx_http_request_t *r,
         return NGX_ERROR;
     }
 
-    char *method = ngx_pstrdup_nul(r->pool, &r->method_name);
+    method = ngx_pstrdup_nul(r->pool, &r->method_name);
     if(!method){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
@@ -734,9 +742,9 @@ ngx_http_am_setup_request_func(ngx_http_request_t *r,
 static ngx_int_t
 ngx_http_am_init(ngx_conf_t *cf)
 {
-    ngx_log_error(NGX_LOG_DEBUG, cf->log, 0, "ngx_http_am_init()");
     ngx_http_handler_pt       *h;
     ngx_http_core_main_conf_t *cmcf;
+    ngx_log_error(NGX_LOG_DEBUG, cf->log, 0, "ngx_http_am_init()");
 
     cmcf = ngx_http_conf_get_module_main_conf(cf, ngx_http_core_module);
     h = ngx_array_push(&cmcf->phases[NGX_HTTP_ACCESS_PHASE].handlers);
@@ -832,12 +840,13 @@ ngx_http_am_exit_process(ngx_cycle_t *cycle)
 static ngx_int_t
 ngx_http_am_notification_handler(ngx_http_request_t *r)
 {
-    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
-                  "notification request.");
-
     static ngx_str_t type = ngx_string("text/plain");
     static ngx_str_t value = ngx_string("OK\n");
     ngx_http_complex_value_t cv;
+    char *body;
+
+    ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
+                  "notification request.");
 
     if(!r->request_body || !r->request_body->bufs){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
@@ -846,7 +855,7 @@ ngx_http_am_notification_handler(ngx_http_request_t *r)
     }
 
     // concatnate chain buffer.
-    char *body = ngx_chain_cat(r, r->request_body->bufs);
+    body = ngx_chain_cat(r, r->request_body->bufs);
     if(!body){
         ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
                       "insufficient memory");
@@ -872,8 +881,10 @@ ngx_http_am_handler(ngx_http_request_t *r)
     am_web_request_func_t req_func;
     ngx_int_t err = NGX_ERROR;
     int ret = NGX_HTTP_INTERNAL_SERVER_ERROR;
-    void *args[2] = {r, &ret};
     ngx_http_am_ctx_t *ctx;
+    void *args[2];
+    args[0] = r;
+    args[1] = &ret;
 
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
                   "ngx_http_am_handler()");
