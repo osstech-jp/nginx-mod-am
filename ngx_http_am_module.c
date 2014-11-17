@@ -779,13 +779,6 @@ ngx_http_am_init_main_conf(ngx_conf_t *cf, void *conf)
         return NGX_CONF_ERROR;
     }
 
-    if(amcf->conf_file.len == 0){
-        ngx_log_error(NGX_LOG_ERR, cf->log, 0,
-                      "insufficiency configration. "
-                      "please set am_conf_file.");
-        return NGX_CONF_ERROR;
-    }
-
     return NGX_CONF_OK;
 }
 
@@ -802,9 +795,14 @@ static ngx_int_t ngx_http_am_init_process(ngx_cycle_t *cycle)
     ngx_log_error(NGX_LOG_INFO, cycle->log, 0,
                   "version: %s, date: %s", agent_version[0], agent_version[2]);
 
-    // TODO: is this safe?(null-terminated?)
-    status = am_web_init((char *)conf->boot_file.data,
-                         (char *)conf->conf_file.data);
+    if(conf->conf_file.len == 0){
+        // Don't call am_web_init with conf=NULL.
+        status = am_web_init((char *)conf->boot_file.data,
+                             "");
+    }else{
+        status = am_web_init((char *)conf->boot_file.data,
+                             (char *)conf->conf_file.data);
+    }
     if(status != AM_SUCCESS){
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "am_web_init error status=%s(%d)",
