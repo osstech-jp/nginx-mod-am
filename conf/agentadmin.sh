@@ -43,7 +43,6 @@ agent_install_input(){
     cat << EOF
 ************************************************************************
 Welcome to the OpenSSO Policy Agent for NGINX
-
 ************************************************************************
 
 EOF
@@ -53,11 +52,6 @@ EOF
     echo '(http://opensso.sample.com:58080/opensso)'
     while [ -z ${OPENAM_URL} ]; do
         read -p "OpenSSO server URL: " OPENAM_URL
-    done
-
-    echo 'Enter the Agent URL as shown below: (http://agent1.sample.com:1234)'
-    while [ -z ${AGENT_URL} ]; do
-        read -p "Agent URL: " AGENT_URL
     done
 
     echo 'Enter the Agent profile name'
@@ -74,14 +68,11 @@ EOF
     done
     stty echo
 
-    AGENT_HOST=`echo ${AGENT_URL}|sed -e 's|http\(s\)\?://\([^:]*\)\(:.*\)\?|\2|'`
     cat << EOF
 -----------------------------------------------
 SUMMARY OF YOUR RESPONSES
 -----------------------------------------------
 OpenSSO server URL : ${OPENAM_URL}
-Agent URL : ${AGENT_URL}
-Agent Host : ${AGENT_HOST}
 Agent Profile name : ${AGENT_PROFILE_NAME}
 EOF
     echo 'Continue with Installation?'
@@ -104,17 +95,8 @@ agent_install(){
         -e "s%@AGENT_LOGS_DIR@%${AGENT_LOGS_DIR}%" \
         ${AGENT_BOOTSTRAP_TEMPL} > ${AGENT_BOOTSTRAP}
 
-    sed -e "s%@OPENAM_URL@%${OPENAM_URL}%" \
-        -e "s%@AGENT_URL@%${AGENT_URL}%" \
-        -e "s%@AGENT_HOST@%${AGENT_HOST}%" \
-        ${AGENT_CONFIG_TEMPL} > ${AGENT_CONFIG}
 }
 
-case "$1" in
-    --install)
-        agent_install_input
-        agent_install
-        ;;
-    *)
-        usage
-esac
+agent_install_input
+agent_install
+
