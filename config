@@ -1,10 +1,22 @@
 
-AM_INC=../extlib/include/
-AM_LIB=../extlib/lib/
+AM_INC=../extlib/common/include/
+AM_LIB=../extlib/common/lib/
 
-CFLAGS="$CFLAGS -I${AM_INC} -DLINUX"
+CFLAGS="$CFLAGS -I${AM_INC}"
 
-CORE_LIBS="$CORE_LIBS -L${AM_LIB} -Wl,-Bdynamic -lamsdk -lxml2 -lstdc++ -lplc4 -lplds4 -lnspr4 -lnss3 -lnssutil3"
+case "$NGX_PLATFORM" in
+    Linux:*)
+    echo Linux
+    CFLAGS="$CFLAGS -DLINUX"
+    CORE_LIBS="$CORE_LIBS -L${AM_LIB} -Wl,-Bdynamic -lamsdk -lxml2 -lstdc++ -lplc4 -lplds4 -lnspr4 -lnss3 -lnssutil3"
+    ;;
+
+    win32)
+    echo win32
+    CFLAGS="$CFLAGS -DWINNT"
+    CORE_LIBS="$CORE_LIBS -L${AM_LIB} $AM_LIB/amsdk.lib"
+    ;;
+esac
 
 ngx_addon_name=ngx_http_am_module
 HTTP_MODULES="$HTTP_MODULES ngx_http_am_module"

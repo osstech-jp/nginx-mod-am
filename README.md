@@ -112,8 +112,9 @@ If you found some problem, then please send me the debug logfile.
  https://forgerock.org/downloads/openam-builds/
 
  ~~~
- $ unzip -d extlib common_3_0_Linux_64bit.zip
- $ ln -s libamsdk.so.3 extlib/lib/libamsdk.so
+ $ mkdir extlib
+ $ unzip -d extlib/common common_3_0_Linux_64bit.zip
+ $ ln -s libamsdk.so.3 extlib/common/lib/libamsdk.so
  ~~~
 
 3. Build

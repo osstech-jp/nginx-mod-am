@@ -14,7 +14,7 @@ all: dist
 $(NGINX_SRC):
 	wget $(NGINX_URI)$(NGINX_SRC)
 
-build: $(NGINX_SRC) extlib
+build: $(NGINX_SRC)
 	tar xzf $(NGINX_SRC)
 	mv nginx-$(NGINX_VER) build
 	touch build
@@ -36,7 +36,7 @@ build/bin/nginx: build/Makefile
 dist: build/bin/nginx
 	rm -rf $(DISTDIR)
 	make -C build install DESTDIR="../$(DISTDIR)/"
-	cp -rp extlib/lib $(DISTDIR)
+	cp -rp extlib/common/lib $(DISTDIR)
 	cp -rp conf $(DISTDIR)
 	mv $(DISTDIR)/conf/agentadmin.sh $(DISTDIR)/bin/
 	install -m 755 extlib/bin/crypt_util $(DISTDIR)/bin/
