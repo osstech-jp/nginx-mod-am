@@ -39,7 +39,7 @@ dist: build/bin/nginx
 	cp -rp extlib/common/lib $(DISTDIR)
 	cp -rp conf $(DISTDIR)
 	mv $(DISTDIR)/conf/agentadmin.sh $(DISTDIR)/bin/
-	install -m 755 extlib/bin/crypt_util $(DISTDIR)/bin/
+	install -m 755 extlib/common/bin/crypt_util $(DISTDIR)/bin/
 	install -m 644 README.md $(DISTDIR)
 	zip -r $(DISTNAME) $(DISTDIR)
 
