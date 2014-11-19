@@ -3,6 +3,14 @@ OpenAM Policy Agent for NGINX
 
 # Download
 
+## 20141119 Release
+
+ * [Windows](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.msi)
+ * [RHEL/CentOS 7 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.el7.x86_64.zip)
+ * [RHEL/CentOS 6 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.el6.x86_64.zip)
+ * [RHEL/CentOS 5 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.el5.x86_64.zip)
+ * [Debian/Ubuntu x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.deb.x86_64.zip)
+
 ## 20141113 Release
 
  * [RHEL/CentOS 7 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.el7.x86_64.zip)
