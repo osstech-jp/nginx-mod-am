@@ -807,7 +807,7 @@ static ngx_int_t ngx_http_am_init_process(ngx_cycle_t *cycle)
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0,
                       "am_web_init error status=%s(%d)",
                       am_status_to_name(status), status);
-        return NGX_ERROR;
+        return NGX_ABORT;
     }
 
     // No need to synchronize due to nginx is single thread model.
