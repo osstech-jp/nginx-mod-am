@@ -11,13 +11,6 @@ OpenAM Policy Agent for NGINX
  * [RHEL/CentOS 5 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.el5.x86_64.zip)
  * [Debian/Ubuntu x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.deb.x86_64.zip)
 
-## 20141113 Release
-
- * [RHEL/CentOS 7 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.el7.x86_64.zip)
- * [RHEL/CentOS 6 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.el6.x86_64.zip)
- * [RHEL/CentOS 5 x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.el5.x86_64.zip)
- * [Debian/Ubuntu x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141113.deb.x86_64.zip)
-
 # Requirement library
 
 You need to install folowing library due to the nginx agent linked the
