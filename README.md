@@ -51,7 +51,6 @@ for Debian/Ubuntu:
  4. Follow the installation interactions and provide these details:
 
   - OpenSSO server URL
-  - Agent URL
   - Agent Profile name
   - Agent Password
 
@@ -62,15 +61,19 @@ for Debian/Ubuntu:
 
 # Agent Uninstallation
 
-stop nginx and delete web_agents/nginx_agent directory.
+stop nginx and delete nginx_agent/ directory.
 
 # Nginx Configuration
 
-agentadmin.sh aready added following configuration:
+Specify OpenSSOAgentBootstrap.properties that agentadmin.sh has generated.
+This is centralized agent configuration mode.
 
     http {
         ...
         am_boot_file "/path/to/OpenSSOAgentBootstrap.properties";
+
+You can specify if you using local configuration mode.
+
         am_conf_file "/path/to/OpenSSOAgentConfiguration.properties";
 
 If you want to use nginx as a reverce proxy.
