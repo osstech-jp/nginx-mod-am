@@ -1,0 +1,112 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<Wix xmlns='http://schemas.microsoft.com/wix/2006/wi'>
+  <Product Name='OpenAM NGINX Policy Agent'
+           Id='a8364fe1-666d-49e2-8bf7-a84444e08580'
+           UpgradeCode='3a141852-d0d4-4772-b1b5-41461af7feca'
+           Language='1033'
+           Codepage='1252'
+           Version='1.0.0'
+           Manufacturer='Open Source Solution Technology Corporation'>
+
+    <Package InstallerVersion='100' Compressed='yes' />
+    <Media Id='1' Cabinet="setup.cab" EmbedCab='yes' DiskPrompt="CD-ROM #1" />
+    <Property Id='DiskPrompt' Value="OpenAM NGINX Policy Agent" />
+
+    <Property Id="WIXUI_INSTALLDIR" Value="TESTFILEPRODUCTDIR" />
+    <UIRef Id="WixUI_InstallDir" />
+    <WixVariable Id="WixUILicenseRtf" Value="windows/license.rtf" />
+
+    <Directory Id='TARGETDIR' Name='SourceDir'>
+      <!--Directory Id='ProgramFilesFolder' Name='PFiles'-->
+        <Directory Id='TESTFILEPRODUCTDIR' Name='OSSTech'>
+          <Directory Id="BASEDIR" Name="OpnAM NGINX Agent">
+            <Directory Id="BINDIR" Name="bin" />
+            <Directory Id="HTMLDIR" Name="html" />
+            <Directory Id="CONFDIR" Name="conf" />
+            <Directory Id="LOGDIR" Name="logs" />
+          </Directory>
+        </Directory>
+      <!--/Directory-->
+
+      <!--Directory Id="ProgramMenuFolder" Name="Programs">
+        <Directory Id="ProgramMenuDir" Name="Foobar 1.0">
+          <Component Id="ProgramMenuDir" Guid="1d8fc9b2-5ff4-41c1-8976-eed6aca3ebaf">
+            <RemoveFolder Id='ProgramMenuDir' On='uninstall' />
+            <RegistryValue Root='HKCU' Key='Software\[Manufacturer]\[ProductName]' Type='string' Value='' KeyPath='yes' />
+          </Component>
+        </Directory>
+      </Directory-->
+      <Directory Id="DesktopFolder" Name="Desktop" />
+    </Directory>
+
+
+    <DirectoryRef Id="BASEDIR">
+      <Component Id="BASEFILES" Guid="c84ef245-f21d-4d33-b81d-a980b63f6515">
+        <File Id="nginx.exe"
+              Source="nginx_agent\nginx.exe"
+              KeyPath="yes" Checksum="yes">
+          <Shortcut Id="DesktopShortcut" Directory="DesktopFolder"
+                    Name="NGINX Agent" WorkingDirectory='BASEDIR'
+                    Icon="nginx.exe" IconIndex="0" Advertise="yes" />
+        </File>
+        <File Source="nginx_agent\agentadmin.exe" Checksum="yes" />
+        <File Source="nginx_agent\amsdk.dll" Checksum="yes" />
+        <File Source="nginx_agent\stop.bat" />
+        <File Source="nginx_agent\README.txt" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="BINDIR">
+      <Component Id="BINFILES" Guid="d5740fae-fd32-4344-94d0-559f81e0884e">
+        <File Source="nginx_agent\bin\cryptit.exe"
+              KeyPath="yes" Checksum="yes" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="CONFDIR">
+      <Component Id="CONFFILES" Guid="53387b2a-deb6-490e-aa2a-de36157a373c">
+        <File Source="nginx_agent\conf\nginx.conf" />
+        <File Source="nginx_agent\conf\fastcgi_params.default" />
+        <File Source="nginx_agent\conf\win-utf" />
+        <File Source="nginx_agent\conf\uwsgi_params" />
+        <File Source="nginx_agent\conf\scgi_params" />
+        <File Source="nginx_agent\conf\fastcgi.conf.default" />
+        <File Source="nginx_agent\conf\fastcgi.conf" />
+        <File Source="nginx_agent\conf\fastcgi_params" />
+        <File Source="nginx_agent\conf\uwsgi_params.default" />
+        <File Source="nginx_agent\conf\koi-win" />
+        <File Source="nginx_agent\conf\mime.types" />
+        <File Source="nginx_agent\conf\scgi_params.default" />
+        <File Source="nginx_agent\conf\mime.types.default" />
+        <File Source="nginx_agent\conf\nginx.conf.default" />
+        <File Source="nginx_agent\conf\koi-utf" />
+        <File Source="nginx_agent\conf\OpenSSOAgentBootstrap.template" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="HTMLDIR">
+      <Component Id="HTMLFILES" Guid="4133638d-d3bf-4159-889b-4b86fa94b8ee">
+        <File Source="nginx_agent\html\index.html" />
+        <File Source="nginx_agent\html\50x.html" />
+      </Component>
+    </DirectoryRef>
+
+    <DirectoryRef Id="LOGDIR">
+      <Component Id="LOGFILES" Guid="223dfd93-ce02-4c92-80ce-937cb4d5cec1">
+        <CreateFolder/>
+      </Component>
+    </DirectoryRef>
+
+    <Feature Id='Complete' Level='1'>
+      <ComponentRef Id="BASEFILES" />
+      <ComponentRef Id="BINFILES" />
+      <ComponentRef Id="CONFFILES" />
+      <ComponentRef Id="HTMLFILES" />
+      <ComponentRef Id="LOGFILES" />
+      <!--ComponentRef Id='ProgramMenuDir' /-->
+    </Feature>
+
+    <Icon Id="nginx.exe" SourceFile="nginx_agent\nginx.exe" />
+
+  </Product>
+</Wix>
