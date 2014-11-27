@@ -1,0 +1,59 @@
+
+DISTDIR=nginx_agent
+DISTNAME=nginx_agent_windows.zip
+
+AGENTADMIN=agentadmin.exe
+EXTLIB=extlib.windows
+
+WIXSRC=windows/nginx_agent.wxs
+WIXOBJ=nginx_agent.wixobj
+MSI=nginx_agent.msi
+
+all: dist
+
+build/Makefile: build
+	cd build && \
+	sh ./auto/configure \
+		--with-cc=cl \
+		--with-cc-opt="-DFD_SETSIZE=1024" \
+		--prefix="" \
+		--sbin-path=nginx.exe \
+		--with-zlib=../$(EXTLIB)/zlib-1.2.8 \
+		--with-pcre=../$(EXTLIB)/pcre-8.34 \
+		--with-select_module \
+		--with-http_ssl_module \
+		--with-openssl=../$(EXTLIB)/openssl-1.0.1j \
+		--add-module=.. \
+		--with-ipv6
+
+build/bin/nginx: build/Makefile
+	cd build && nmake
+
+$(AGENTADMIN): windows/agentadmin.cpp
+	cl /Fe$(AGENTADMIN) windows/agentadmin.cpp
+
+dist: build/bin/nginx $(AGENTADMIN)
+	rm -rf $(DISTDIR)
+	cd build && nmake install DESTDIR="../$(DISTDIR)/"
+	cp -p $(EXTLIB)/common/lib/amsdk.dll $(DISTDIR)
+	mkdir -p $(DISTDIR)/bin
+	cp -p $(EXTLIB)/common/bin/cryptit.exe $(DISTDIR)/bin
+	sed 's/$$/\r/' conf/nginx.conf > $(DISTDIR)/conf/nginx.conf
+	cp -p conf/OpenSSOAgentBootstrap.template $(DISTDIR)/conf
+	cp -p agentadmin.exe $(DISTDIR)
+	cp -p windows/stop.bat $(DISTDIR)
+	cp -p windows/README.txt $(DISTDIR)
+	zip -r $(DISTNAME) $(DISTDIR)
+
+$(MSI): $(WIXSRC)
+	candle $(WIXSRC)
+	light -ext WixUIExtension $(WIXOBJ)
+
+msi: $(MSI)
+
+clean:
+	rm -rf build/Makefile build/objs/ $(DISTDIR) $(DISTNAME) $(MSI)
+
+distclean:
+	rm -rf build/
+
