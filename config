@@ -6,16 +6,17 @@ CFLAGS="$CFLAGS -I${AM_INC}"
 
 case "$NGX_PLATFORM" in
     Linux:*)
-    echo Linux
     CFLAGS="$CFLAGS -DLINUX"
     CORE_LIBS="$CORE_LIBS -L${AM_LIB} -Wl,-Bdynamic -lamsdk -lxml2 -lstdc++ -lplc4 -lplds4 -lnspr4 -lnss3 -lnssutil3"
     ;;
 
     win32)
-    echo win32
     CFLAGS="$CFLAGS -DWINNT"
     CORE_LIBS="$CORE_LIBS -L${AM_LIB} $AM_LIB/amsdk.lib"
     ;;
+    *)
+    echo "Unsupported platform for ngx_http_am_module: $NGX_PLATFORM"
+    exit 1
 esac
 
 ngx_addon_name=ngx_http_am_module
