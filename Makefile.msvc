@@ -19,7 +19,7 @@ build/Makefile: build
 		--prefix="" \
 		--sbin-path=nginx.exe \
 		--with-zlib=../$(EXTLIB)/zlib-1.2.8 \
-		--with-pcre=../$(EXTLIB)/pcre-8.34 \
+		--with-pcre=../$(EXTLIB)/pcre-8.36 \
 		--with-select_module \
 		--with-http_ssl_module \
 		--with-openssl=../$(EXTLIB)/openssl-1.0.1j \
