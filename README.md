@@ -13,12 +13,12 @@ OpenAM Policy Agent for NGINX
 
 # Requirement library
 
-You need to install folowing library due to the nginx agent linked the
-library dynamical.
+You need to install folowing libraries due to the nginx agent being linked the
+libraries dynamically.
 
 for RHEL/CentOS:
 ~~~
-# yum install nspr nss libxml2 pcpre openssl
+# yum install nspr nss libxml2 pcre openssl
 ~~~
 
 for Debian/Ubuntu:
@@ -76,7 +76,7 @@ You can specify if you using local configuration mode.
 
         am_conf_file "/path/to/OpenSSOAgentConfiguration.properties";
 
-If you want to use nginx as a reverce proxy.
+If you want to use nginx as a reverse proxy.
 
     location / {
         ...
@@ -86,12 +86,12 @@ If you want to use nginx as a reverce proxy.
 Currently I recommend one worker process because multi process mode
 does not work notification from OpenAM.
 
-Pretty soon, I'll try solving the multi process problem. However Nginx
-work very well with only one process.
+Pretty soon, I'll try solving the multi process problem. However nginx
+works very well with only one process.
 
     worker_processes  1;
 
-If you found some problem, then please send me the debug logfile.
+If you find some problem, then please send me the debug logfile.
 
     error_log logs/error.log debug_http;
 
@@ -112,7 +112,7 @@ If you found some problem, then please send me the debug logfile.
 
 2. Setup extlib
 
- You can download Agent SDK here:
+ You can download the Agent SDK here:
  https://forgerock.org/downloads/openam-builds/
 
  ~~~
