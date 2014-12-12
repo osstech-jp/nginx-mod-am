@@ -13,8 +13,8 @@ OpenAM Policy Agent for NGINX
 
 # Requirement library
 
-You need to install folowing libraries due to the nginx agent being linked the
-libraries dynamically.
+You need to install folowing libraries due to the nginx agent being linked to 
+the libraries dynamically.
 
 for RHEL/CentOS:
 ~~~
