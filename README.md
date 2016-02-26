@@ -3,6 +3,9 @@ OpenAM Policy Agent for NGINX
 
 # Download
 
+## 20160226 Release
+ * [Debian/Ubuntu x86_64](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20160226.deb.x86_64.zip)
+
 ## 20141119 Release
 
  * [Windows](https://www.osstech.co.jp/download/hamano/nginx/nginx_agent_20141119.msi)
