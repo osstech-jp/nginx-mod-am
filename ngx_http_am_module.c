@@ -166,6 +166,10 @@ ngx_http_am_get_post_data(void **args, char **rbuf){
 static am_status_t
 ngx_http_am_set_user(void **args, const char *user)
 {
+    if (!user) { 
+      // user may be null in case of notenforced_url_attributes_enable 
+      return AM_SUCCESS; 
+    } 
     am_status_t st = AM_SUCCESS;
     ngx_http_request_t *r = args[0];
     ngx_log_error(NGX_LOG_DEBUG, r->connection->log, 0,
