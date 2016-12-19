@@ -42,16 +42,16 @@ generate_key(){
 agent_install_input(){
     cat << EOF
 ************************************************************************
-Welcome to the OpenSSO Policy Agent for NGINX
+Welcome to the OpenAM Policy Agent for NGINX
 ************************************************************************
 
 EOF
 
     echo 'Enter the URL where the OpenAM server is running.'
     echo 'Please include the deployment URI also as shown below:'
-    echo '(http://opensso.sample.com:58080/opensso)'
+    echo '(http://openam.example.com:8080/openam)'
     while [ -z ${OPENAM_URL} ]; do
-        read -p "OpenSSO server URL: " OPENAM_URL
+        read -p "OpenAM server URL: " OPENAM_URL
     done
 
     echo 'Enter the Agent profile name'
@@ -72,7 +72,7 @@ EOF
 -----------------------------------------------
 SUMMARY OF YOUR RESPONSES
 -----------------------------------------------
-OpenSSO server URL : ${OPENAM_URL}
+OpenAM server URL : ${OPENAM_URL}
 Agent Profile name : ${AGENT_PROFILE_NAME}
 EOF
     echo 'Continue with Installation?'
