@@ -590,11 +590,13 @@ static char* ngx_http_am_get_cookie(ngx_http_request_t *r){
 static char* ngx_http_am_get_url(ngx_http_request_t *r){
     char *proto = NULL;
     char *host = NULL;
-    char *path = NULL;
+    u_char *path = NULL;
     char *url = NULL;
     size_t len = 4; // "://" + '\0'
     int is_ssl = 0;
     int i;
+    uintptr_t escapes;
+    int path_len;
 
 #if (NGX_HTTP_SSL)
     /* detect SSL connection */
@@ -625,25 +627,35 @@ static char* ngx_http_am_get_url(ngx_http_request_t *r){
         len += ngx_cycle->hostname.len;
     }
 
-    // Should we chop query parameter from the uri?
-    // see http://java.net/jira/browse/OPENSSO-5552
-    len += r->unparsed_uri.len;
-    path = ngx_pstrdup_nul(r->pool, &r->unparsed_uri);
-    if(!path){
+    // Code below escapes the URI before sending it off to the OpenAM
+    // agent. This has the potential effect of fixing the way said
+    // agent handles colon (":") characters present in any place in
+    // URI. Alternative approaches are either to completely remove
+    // colons or remove URL query paramaters (identified by r->args,
+    // r->args_start and r->uri_start).
+
+    // First we need to find out the length of the escaped string and
+    // only then can we proceed to actually escaping it
+    escapes = ngx_escape_uri(NULL, r->unparsed_uri.data, r->unparsed_uri.len, NGX_ESCAPE_URI);
+    path_len = r->unparsed_uri.len + escapes * 2;
+    path = ngx_pnalloc(r->pool, path_len);
+    if (path == NULL) {
         return NULL;
     }
+    (void) ngx_escape_uri(path, r->unparsed_uri.data, r->unparsed_uri.len, NGX_ESCAPE_URI);
 
     /*
      * trailing slashs.
      * see https://bugster.forgerock.org/jira/browse/OPENAM-2969
      */
-    for(i = r->unparsed_uri.len - 1; i >= 0; i--){
+    for(i = path_len; i >= 0; i--){
         if(path[i] == '/'){
             path[i] = '\0';
         }else{
             break;
         }
     }
+    len += path_len;
 
     url = ngx_pnalloc(r->pool, len);
     if(!url){
